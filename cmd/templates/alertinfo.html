@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alert Info - {{.ID}}</title>
+    <style>
+        .box {
+            margin-top: 20vh;
+            margin-left: 20%;
+            width: 60%;
+        }
+        table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        td, th {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <table>
+            <tr>
+            <td>ID</td>
+            <td>{{.ID}}</td>
+            </tr>
+            <tr>
+                <td>Time</td>
+                <td>{{.Time}}</td>
+            </tr>
+            <tr>
+                <td>Hostname</td>
+                <td>{{.From}}</td>
+            </tr>
+            <tr>
+                <td>Task Name</td>
+                <td>{{.TaskName}}</td>
+            </tr>
+            <tr>
+                <td>Message</td>
+                <td>{{.Short}}</td>
+            </tr>
+            <tr>
+                <td>Status</td>
+                <td>
+                    {{if .Status}}
+                        OK (actions executed successfully)
+                    {{else}}
+                        Require manual effort
+                    {{end}}
+                </td>
+            </tr>
+            <tr>
+                <td>Command Output</td>
+                <td id="detailed-info">{{.Long}}</td>
+            </tr>
+        </table>
+    </div>
+    <script>
+        let di = document.getElementById("detailed-info")
+        di.innerHTML = di.innerHTML.replace("\n", "<br/>")
+    </script>
+</body>
+</html>

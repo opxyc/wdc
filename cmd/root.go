@@ -30,7 +30,7 @@ func init() {
 		os.Exit(1)
 	}
 
-	logDir = filepath.Join(d, "WatchDogClient", "logs")
+	logDir = filepath.Join(d, "WDC", "logs")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

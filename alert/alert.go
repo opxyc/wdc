@@ -2,11 +2,13 @@ package alert
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -41,31 +43,70 @@ const format = "2006-Jan-02"
 
 // ReadFromLog reads the alert with id from log files in dir
 func ReadFromLog(dir, id string) (*Alert, error) {
-	// get today's date
-	// open corresponding log file and read
-	// if not present, read yesterdays... and continue until past 60 days..
+	// search for given alert id in the logs of part 30 days
+	const n = 30
+	var alert *Alert
+	var wg sync.WaitGroup
 
+	// today's time is taken as reference and will subtract one day from it
+	// to get previous n days log file names
+	referenceTime := time.Now()
 	var t time.Time
-	now := time.Now()
 	t = time.Now()
+
+	// ctx for cancelling file reads that are in progress if some other goroutine
+	// found the alert we are looking for
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			defer wg.Done()
+
+			// get log file name from time
+			t = referenceTime.AddDate(0, 0, -1*i)
+			fname := filepath.Join(dir, t.Format(format))
+			if _, err := os.Stat(fname); err != nil {
+				return
+			}
+
+			alrt, _ := searchAndRetrieve(ctx, id, fname)
+			// if we got the alert, cancel all other reads
+			if alrt != nil {
+				alert = alrt
+				cancelFunc()
+			}
+		}(i)
+	}
+
+	// wait for all goroutines to complete/return
+	wg.Wait()
+
+	if alert == nil {
+		return nil, fmt.Errorf("log with id '%v' not found", id)
+	}
+
+	return alert, nil
+}
+
+// searchAndRetrieve searches the file with name fname for an alert with given id
+// until it's found, EOF reached or ctx is cancelled
+func searchAndRetrieve(ctx context.Context, id, fname string) (*Alert, error) {
 	var alertLines []string // to store the lines read from logfile
 	var found bool          // to indicate if the log id is found
-	for i := 0; i < 60 && !found; i++ {
-		// get time
-		t = now.AddDate(0, 0, -1*i)
-		// get log file name from time
-		fname := filepath.Join(dir, t.Format(format))
-		if _, err := os.Stat(fname); err != nil {
-			continue
-		}
 
-		f, err := os.Open(fname)
-		if err != nil {
-			continue
-		}
-		defer f.Close()
+	f, err := os.Open(fname)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
 
-		scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(f)
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("received done signal")
+	default:
 		for scanner.Scan() {
 			line := scanner.Text()
 			if line == id {
@@ -73,22 +114,14 @@ func ReadFromLog(dir, id string) (*Alert, error) {
 				found = true
 			} else if found {
 				if line == fmt.Sprintf("ENDOF%s", id) {
-					break
+					return parseAlert(alertLines), nil
 				}
 				alertLines = append(alertLines, line)
 			}
 		}
-
-		if err := scanner.Err(); err != nil {
-			return nil, err
-		}
 	}
 
-	if !found {
-		return nil, fmt.Errorf("log with id '%v' not found", id)
-	}
-
-	return parseAlert(alertLines), nil
+	return nil, fmt.Errorf("alert for id '%v' not found in '%v'", id, fname)
 }
 
 func parseAlert(info []string) *Alert {

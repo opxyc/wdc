@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/fatih/color"
 	"github.com/gorilla/websocket"
 	"github.com/opxyc/wdc/alert"
 )
@@ -96,6 +97,11 @@ func alogHeader() string {
 	return titleRow
 }
 
+var (
+	blue = color.New(color.BgBlue)
+	red  = color.New(color.BgRed)
+)
+
 // alog logs alert to console and file
 func alog(msg *alert.Alert) {
 	const maxMsgLen = 70
@@ -107,7 +113,12 @@ func alog(msg *alert.Alert) {
 	printHeader()
 	// take time and neglect date for logging to console
 	timeOnly := strings.Split(msg.Time, " ")[1]
-	info := fmt.Sprintf("%-9v %-23s %-16s %s", timeOnly, msg.ID, msg.From, msg.Short)
+	if msg.Status == 0 {
+		timeOnly = blue.Sprint(timeOnly)
+	} else {
+		timeOnly = red.Sprint(timeOnly)
+	}
+	info := fmt.Sprintf("%-12v  %-23s %-16s %s", timeOnly, msg.ID, msg.From, msg.Short)
 	fmt.Printf("%s\n", info)
 
 	// see pkg alert/alert.go to learn about the format in which an alret is logged to file

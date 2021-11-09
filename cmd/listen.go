@@ -18,6 +18,10 @@ var listenCmd = &cobra.Command{
 	Short: "Start listening to incoming alerts",
 	Run: func(cmd *cobra.Command, args []string) {
 		addr, err := cmd.Flags().GetString("addr")
+		if err != nil {
+			cmd.Usage()
+			return
+		}
 		ep, err := cmd.Flags().GetString("end-point")
 		if err != nil {
 			cmd.Usage()
@@ -53,7 +57,8 @@ func startListener(addr, ep string) {
 		ws.lnl(ctx)
 		// if the listener returned, it means something went wrong
 		// and cannot continue. so cancel the context and exit..
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		cancelFunc()
+		os.Exit(1)
 	}()
 
 	// start http server

@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/fatih/color"
+	"github.com/gen2brain/beeep"
 	"github.com/gorilla/websocket"
 	"github.com/opxyc/wdc/alert"
 )
@@ -104,7 +105,6 @@ var (
 
 // alog logs alert to console and file
 func alog(msg *alert.Alert) {
-	const maxMsgLen = 70
 	// logs received msg in the format:
 	// TIME		ID            Host          Message
 	// 13:00:10	1635149439253 srv01         cpu usage on > 10%. take action immediately
@@ -120,6 +120,8 @@ func alog(msg *alert.Alert) {
 	}
 	info := fmt.Sprintf("%-12v  %-23s %-16s %s", timeOnly, msg.ID, msg.From, msg.Short)
 	fmt.Printf("%s\n", info)
+	beeep.Beep(beeep.DefaultFreq, beeep.DefaultDuration)
+	beeep.Notify(fmt.Sprintf("Alert from %s", msg.From), msg.Short, "")
 
 	// see pkg alert/alert.go to learn about the format in which an alret is logged to file
 	l.Printf("\n%s\n%s\n%s\n%s\n%s\n%s%d\nENDOF%s\n\n", msg.ID, msg.Time, msg.From, msg.TaskName, msg.Short, msg.Long, msg.Status, msg.ID)
